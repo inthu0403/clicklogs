@@ -4,11 +4,9 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=0">
     <link rel="stylesheet" href="index.css">
     <link href="https://fonts.googleapis.com/css?family=Open+Sans|Open+Sans+Condensed:300|Roboto" rel="stylesheet">
-    <!-- Firebase loaded first so it is ready before any script runs -->
     <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
     <script>
-    // Firebase config
     const firebaseConfig = {
         apiKey: "AIzaSyAT0WFWB6Hcnto0SgcGuhMb4ywp4-tXHGw",
         authDomain: "clicklogs-study.firebaseapp.com",
@@ -31,7 +29,8 @@
     var dependentVariable = "";
     var showFeedback = false;
     var interfaceVariations = 2;
-    var interfaceSequence = 1;
+    var interfaceSequence = 1;  // starts at 1, goes to 2
+    var sessionComplete = false;
 
     function onLoad() {
         d = new Date();
@@ -71,14 +70,17 @@
         }
         try {
             await batch.commit();
-            document.getElementById("container").innerHTML = '<span class="spanWhite">Data saved successfully. Thank you!</span>';
+            document.getElementById("container").innerHTML =
+                '<span class="spanWhite">Data saved successfully. Thank you!</span>';
         } catch (err) {
             console.error("Firestore error:", err);
-            document.getElementById("container").innerHTML = '<span class="spanWhite">Save failed: ' + err.message + '</span>';
+            document.getElementById("container").innerHTML =
+                '<span class="spanWhite">Save failed: ' + err.message + '</span>';
         }
     }
 
     function tapityTap(tep) {
+        if (sessionComplete) return;  // stop listening after session done
         d = new Date();
         var te = tep.type;
         switch(te) {
@@ -102,21 +104,31 @@
                         interfaceSequence: interfaceSequence,
                         interface: showFeedback ? "feedbackshown" : "nofeedback"
                     }));
+
                     if (tapCounter >= tapLimit) {
-                        interfaceSequence++;
-                        if (interfaceSequence <= interfaceVariations) {
-                            document.getElementById("counter").innerHTML = '<span class="spanWhite">Mean: <span class="spanTime">' + Math.round(mean) + '</span> ms</span>';
+                        // show mean
+                        document.getElementById("counter").innerHTML =
+                            '<span class="spanWhite">Mean: <span class="spanTime">' +
+                            Math.round(mean) + '</span> ms</span>';
+
+                        if (interfaceSequence < interfaceVariations) {
+                            // first round done - show Continue button
                             document.getElementById("continue").style.display = "block";
                             document.getElementById("tapHere").style.display = "none";
                         } else {
-                            document.getElementById("counter").innerHTML = '<span class="spanWhite">Mean: <span class="spanTime">' + Math.round(mean) + '</span> ms</span>';
+                            // second round done - save everything
+                            sessionComplete = true;
                             document.getElementById("tapHere").style.display = "none";
+                            document.getElementById("continue").style.display = "none";
                             syncToFirestore();
                         }
                         return;
                     }
+
                     if (showFeedback)
-                        document.getElementById("counter").innerHTML = "Mean tap duration: <span class='spanTime'>" + Math.round(mean) + "</span> ms";
+                        document.getElementById("counter").innerHTML =
+                            "Mean tap duration: <span class='spanTime'>" +
+                            Math.round(mean) + "</span> ms";
                 }
                 startTap = 0; endTap = 0;
                 break;
@@ -124,11 +136,17 @@
     }
 
     function startNext() {
-        startTap = 0; endTap = 0; tapCounter = 0; totalTouchDuration = 0;
+        // move to second interface variation
+        interfaceSequence = 2;
+        tapCounter = 0;
+        totalTouchDuration = 0;
+        startTap = 0;
+        endTap = 0;
+        showFeedback = !showFeedback;  // flip feedback mode
         document.getElementById("tapHere").style.display = "block";
         document.getElementById("continue").style.display = "none";
-        document.getElementById("counter").innerHTML = "";
-        showFeedback = !showFeedback;
+        document.getElementById("counter").innerHTML =
+            '<span class="spanWhite">Round 2 of 2 - tap 50 times</span>';
     }
     </script>
 </head>
