@@ -26,14 +26,24 @@
     var uniqueIdentifier = 0;
     var dependentVariable = "";
     var showFeedback = false;
+    var initialShowFeedback = false;
     var interfaceVariations = 2;
     var interfaceSequence = 1;
     var sessionComplete = false;
+    var isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
 
     function onLoad() {
         var d = new Date();
         if (d.getTime() % 2 == 0) showFeedback = true;
+        initialShowFeedback = showFeedback;
         uniqueIdentifier = d.getTime() + "" + Math.floor(Math.random() * 42);
+
+        // Auto-detect platform and hide the wrong button
+        if (isMobile) {
+            document.getElementById("variable2").style.display = "none"; // hide PC
+        } else {
+            document.getElementById("variable1").style.display = "none"; // hide Android
+        }
 
         var btn = document.getElementById('tapHere');
 
@@ -119,7 +129,7 @@
         tapCounter = 0;
         totalTouchDuration = 0;
         startTap = 0;
-        showFeedback = !showFeedback;
+        showFeedback = !initialShowFeedback;
         document.getElementById("tapHere").style.display = "block";
         document.getElementById("continue").style.display = "none";
         document.getElementById("counter").innerHTML =
