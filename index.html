@@ -4,8 +4,11 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=0">
     <link rel="stylesheet" href="index.css">
     <link href="https://fonts.googleapis.com/css?family=Open+Sans|Open+Sans+Condensed:300|Roboto" rel="stylesheet">
+    <!-- Firebase loaded first so it is ready before any script runs -->
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
     <script>
-    window.addEventListener('load', function() {
+    // Firebase config
     const firebaseConfig = {
         apiKey: "AIzaSyAT0WFWB6Hcnto0SgcGuhMb4ywp4-tXHGw",
         authDomain: "clicklogs-study.firebaseapp.com",
@@ -71,14 +74,13 @@
             document.getElementById("container").innerHTML = '<span class="spanWhite">Data saved successfully. Thank you!</span>';
         } catch (err) {
             console.error("Firestore error:", err);
-            document.getElementById("container").innerHTML = '<span class="spanWhite">Save failed. Please try again.</span>';
+            document.getElementById("container").innerHTML = '<span class="spanWhite">Save failed: ' + err.message + '</span>';
         }
     }
 
     function tapityTap(tep) {
         d = new Date();
         var te = tep.type;
-        document.getElementById("action").innerHTML = te;
         switch(te) {
             case "touchstart": tep.preventDefault();
             case "mousedown":
@@ -128,10 +130,9 @@
         document.getElementById("counter").innerHTML = "";
         showFeedback = !showFeedback;
     }
-    }); // end window.addEventListener('load')
     </script>
 </head>
-<body>
+<body onload="onLoad()">
     <div>
         <div id="buttoncontainer">
             <button type="button" onclick="saveDependentVariable('android')" id="variable1">Android</button>
@@ -144,8 +145,5 @@
             <button id="continue" onclick="startNext()">Continue</button>
         </div>
     </div>
-    <!-- Firebase loaded at end of body to ensure DOM is ready -->
-    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
 </body>
 </html>
