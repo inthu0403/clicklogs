@@ -1,0 +1,151 @@
+<html>
+<head>
+    <meta charset="utf8"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=0">
+    <link rel="stylesheet" href="index.css">
+    <link href="https://fonts.googleapis.com/css?family=Open+Sans|Open+Sans+Condensed:300|Roboto" rel="stylesheet">
+    <script>
+    window.addEventListener('load', function() {
+    const firebaseConfig = {
+        apiKey: "AIzaSyAT0WFWB6Hcnto0SgcGuhMb4ywp4-tXHGw",
+        authDomain: "clicklogs-study.firebaseapp.com",
+        projectId: "clicklogs-study",
+        storageBucket: "clicklogs-study.firebasestorage.app",
+        messagingSenderId: "731078032645",
+        appId: "1:731078032645:web:f9ffd7682ab7b5c9f1cb6c"
+    };
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.firestore();
+
+    var totalTouchDuration = 0;
+    var tapCounter = 0;
+    var startTap = 0, endTap = 0;
+    var tapSessionStartTime = 0;
+    var tapLogsArray = [];
+    var tapLimit = 50;
+    var uniqueIdentifier = 0;
+    var d;
+    var dependentVariable = "";
+    var showFeedback = false;
+    var interfaceVariations = 2;
+    var interfaceSequence = 1;
+
+    function onLoad() {
+        d = new Date();
+        if (d.getTime() % 2 == 0) showFeedback = true;
+        var randomNumber = Math.floor(Math.random() * 42);
+        uniqueIdentifier = d.getTime() + "" + randomNumber;
+        ["mouseup","mousedown","touchstart","touchend"].forEach(function(te) {
+            document.getElementById('tapHere').addEventListener(te, tapityTap);
+        });
+    }
+
+    function saveDependentVariable(dVariable) {
+        dependentVariable = dVariable;
+        document.getElementById("buttoncontainer").style.display = "none";
+        document.getElementById("container").style.display = "inline-block";
+    }
+
+    async function syncToFirestore() {
+        var serverTimestamp = Date.now();
+        var batch = db.batch();
+        for (var i = 0; i < tapLogsArray.length; i++) {
+            var tap = typeof tapLogsArray[i] === 'string' ? JSON.parse(tapLogsArray[i]) : tapLogsArray[i];
+            var s = tap.startTimestamp || 0;
+            var e = tap.endTimestamp || 0;
+            var docRef = db.collection('tap_logs').doc();
+            batch.set(docRef, {
+                sessionId: uniqueIdentifier,
+                platform: dependentVariable.toLowerCase(),
+                interfaceType: tap.interface || 'unknown',
+                interfaceSequence: tap.interfaceSequence || 1,
+                tapSequenceNumber: tap.tapSequenceNumber || 0,
+                startTimestamp: s,
+                endTimestamp: e,
+                durationMs: (s > 0 && e > 0) ? e - s : 0,
+                serverTimestamp: serverTimestamp
+            });
+        }
+        try {
+            await batch.commit();
+            document.getElementById("container").innerHTML = '<span class="spanWhite">Data saved successfully. Thank you!</span>';
+        } catch (err) {
+            console.error("Firestore error:", err);
+            document.getElementById("container").innerHTML = '<span class="spanWhite">Save failed. Please try again.</span>';
+        }
+    }
+
+    function tapityTap(tep) {
+        d = new Date();
+        var te = tep.type;
+        document.getElementById("action").innerHTML = te;
+        switch(te) {
+            case "touchstart": tep.preventDefault();
+            case "mousedown":
+                startTap = d.getTime();
+                if (tapSessionStartTime == 0) tapSessionStartTime = startTap;
+                break;
+            case "touchend": tep.preventDefault();
+            case "mouseup":
+                endTap = d.getTime();
+                var duration = endTap - startTap;
+                if (startTap > 0 && endTap > 0 && startTap <= endTap) {
+                    tapCounter++;
+                    totalTouchDuration += duration;
+                    var mean = totalTouchDuration / tapCounter;
+                    tapLogsArray.push(JSON.stringify({
+                        tapSequenceNumber: tapCounter,
+                        startTimestamp: startTap,
+                        endTimestamp: endTap,
+                        interfaceSequence: interfaceSequence,
+                        interface: showFeedback ? "feedbackshown" : "nofeedback"
+                    }));
+                    if (tapCounter >= tapLimit) {
+                        interfaceSequence++;
+                        if (interfaceSequence <= interfaceVariations) {
+                            document.getElementById("counter").innerHTML = '<span class="spanWhite">Mean: <span class="spanTime">' + Math.round(mean) + '</span> ms</span>';
+                            document.getElementById("continue").style.display = "block";
+                            document.getElementById("tapHere").style.display = "none";
+                        } else {
+                            document.getElementById("counter").innerHTML = '<span class="spanWhite">Mean: <span class="spanTime">' + Math.round(mean) + '</span> ms</span>';
+                            document.getElementById("tapHere").style.display = "none";
+                            syncToFirestore();
+                        }
+                        return;
+                    }
+                    if (showFeedback)
+                        document.getElementById("counter").innerHTML = "Mean tap duration: <span class='spanTime'>" + Math.round(mean) + "</span> ms";
+                }
+                startTap = 0; endTap = 0;
+                break;
+        }
+    }
+
+    function startNext() {
+        startTap = 0; endTap = 0; tapCounter = 0; totalTouchDuration = 0;
+        document.getElementById("tapHere").style.display = "block";
+        document.getElementById("continue").style.display = "none";
+        document.getElementById("counter").innerHTML = "";
+        showFeedback = !showFeedback;
+    }
+    }); // end window.addEventListener('load')
+    </script>
+</head>
+<body>
+    <div>
+        <div id="buttoncontainer">
+            <button type="button" onclick="saveDependentVariable('android')" id="variable1">Android</button>
+            <button type="button" onclick="saveDependentVariable('pc')" id="variable2">PC</button>
+        </div>
+        <div id="container" class="container">
+            <div id="counter"></div>
+            <div id="action"></div>
+            <button id="tapHere"><img src="2x/round_touch_app_white_36dp.png"/></button>
+            <button id="continue" onclick="startNext()">Continue</button>
+        </div>
+    </div>
+    <!-- Firebase loaded at end of body to ensure DOM is ready -->
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+</body>
+</html>
